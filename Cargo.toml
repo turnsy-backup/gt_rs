@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["Jay Turnsek jaymturnsek@gmail.com"]
 description = "A better CD"
 license = "MIT"
-repository = "https:/github.com/turnsy-backup/gt_rs"
+repository = "https://github.com/turnsy-backup/gt_rs"
 
 [dependencies]
 confy = "0.6.1"
