@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use serde_derive::{Deserialize, Serialize};
 
 const DEFAULT_LIST_FILE: &str = "gt_list.txt";
+const DEFAULT_GT_PATH_FILE: &str = "gt_path.txt";
 const DEFAULT_DIR_DEPTH: i32 = -1;
 
 enum Mode {
@@ -21,6 +22,7 @@ enum Mode {
 struct Config {
     dir_depth: i32,
     list_path: String,
+    gt_path: String,
 }
 
 impl Default for Config {
@@ -28,28 +30,34 @@ impl Default for Config {
         Config {
             dir_depth: DEFAULT_DIR_DEPTH,
             list_path: DEFAULT_LIST_FILE.to_string(),
+            gt_path: DEFAULT_GT_PATH_FILE.to_string(),
         }
     }
 }
 
-fn start(path: PathBuf) {
-    let mut app = App::new(path);
-    if let Ok(selected_dir) = app.run() {
-        println!("{}", selected_dir);
-    }
+fn start(list_file_path: PathBuf, gt_file_path: PathBuf) {
+    let mut app = App::new(list_file_path.clone(), gt_file_path.clone());
+    app.run().unwrap();
 }
 
 fn main() {
-    let cfg: Config = confy::load("dc", None).unwrap();
-    let mut list_path: PathBuf = confy::get_configuration_file_path("dc", None).unwrap();
-    list_path.push(cfg.list_path);
+    let cfg: Config = confy::load("gt", None).unwrap();
+
+    let cfg_root = confy::get_configuration_file_path("gt", None)
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_path_buf();
+
+    let list_path = cfg_root.join(&cfg.list_path);
+    let gt_path = cfg_root.join(&cfg.gt_path);
 
     let root_command = std::env::args().nth(1);
     let dir_command = std::env::args().nth(2);
 
     match root_command.as_deref() {
         Some("add") => add_dir(dir_command.as_deref(), &list_path),
-        None => start(list_path),
+        None => start(list_path, gt_path),
         _ => panic!("Illegal first argument"),
     }
 }

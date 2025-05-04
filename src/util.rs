@@ -1,6 +1,6 @@
 use std::{env::current_dir, fs::File, io::Write, path::PathBuf};
 
-pub fn get_or_create_list_file(list_path: &PathBuf) -> File {
+pub fn get_or_create_file(list_path: &PathBuf) -> File {
     File::options()
         .append(true)
         .create(true)
@@ -26,8 +26,9 @@ pub fn add_dir(path_arg: Option<&str>, list_path: &PathBuf) {
             .unwrap(),
     };
 
-    let mut list_file = get_or_create_list_file(list_path);
+    let mut list_file = get_or_create_file(list_path);
     writeln!(&mut list_file, "{path}").unwrap();
+    println!("Added '{}' to gt", path);
 }
 
 pub fn remove_dir(index: usize, dirs: &mut Vec<String>, list_path: &PathBuf) {

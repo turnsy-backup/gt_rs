@@ -1,8 +1,8 @@
 use crate::ui::{draw_delete, draw_view};
-use crate::util::remove_dir;
+use crate::util::{get_or_create_file, remove_dir};
 use crate::Mode;
 use std::fs::{exists, read_to_string, File};
-use std::io::Result;
+use std::io::{Result, SeekFrom, Write};
 use std::path::PathBuf;
 
 use crossterm::event::{self, Event, KeyCode};
@@ -14,10 +14,19 @@ pub struct App {
     list_state: ListState,
     mode: Mode,
     list_path: PathBuf,
+    gt_path: PathBuf,
+}
+
+enum ExitReason {
+    Quit,
+    GoTo,
+    Interact,
+    Delete,
+    DeleteExit,
 }
 
 impl App {
-    pub fn new(list_path: PathBuf) -> Self {
+    pub fn new(list_path: PathBuf, gt_path: PathBuf) -> Self {
         if !exists(&list_path).unwrap() {
             let _ = File::create(&list_path);
         }
@@ -36,24 +45,47 @@ impl App {
             list_state,
             mode: Mode::View,
             list_path,
+            gt_path,
         }
     }
 
-    pub fn run(&mut self) -> Result<String> {
+    pub fn run(&mut self) -> Result<()> {
         let mut terminal = ratatui::init();
 
         loop {
             terminal.draw(|frame| self.render(frame))?;
 
             if let Event::Key(key) = event::read()? {
-                if self.handle_input(key.code) {
-                    break;
+                match self.handle_input(key.code) {
+                    ExitReason::GoTo => {
+                        // write to file
+                        let mut gt_file = get_or_create_file(&self.gt_path);
+                        gt_file.set_len(0).unwrap();
+                        gt_file
+                            .write_all(&self.get_selected_dir().as_bytes())
+                            .unwrap();
+                        break;
+                    }
+                    ExitReason::Quit => {
+                        // clear file
+                        let gt_file = get_or_create_file(&self.gt_path);
+                        gt_file.set_len(0).unwrap();
+
+                        break;
+                    }
+                    ExitReason::Delete => {
+                        self.mode = Mode::Delete;
+                    }
+                    ExitReason::DeleteExit => {
+                        self.mode = Mode::View;
+                    }
+                    ExitReason::Interact => {}
                 }
             }
         }
 
         ratatui::restore();
-        Ok(self.get_selected_dir())
+        Ok(())
     }
 
     fn render(&mut self, frame: &mut Frame) {
@@ -63,44 +95,41 @@ impl App {
         }
     }
 
-    fn handle_input(&mut self, key: KeyCode) -> bool {
+    fn handle_input(&mut self, key: KeyCode) -> ExitReason {
         match self.mode {
             Mode::View => self.handle_view_input(key),
             Mode::Delete => self.handle_delete_input(key),
         }
     }
 
-    fn handle_view_input(&mut self, key: KeyCode) -> bool {
+    fn handle_view_input(&mut self, key: KeyCode) -> ExitReason {
         match key {
             KeyCode::Down => {
                 self.list_state.select_next();
-                false
+                ExitReason::Interact
             }
             KeyCode::Up => {
                 self.list_state.select_previous();
-                false
+                ExitReason::Interact
             }
             KeyCode::Char(c) => {
                 if c.is_ascii_digit() {
                     let new_index = c.to_digit(10).unwrap() as usize - 1;
                     self.list_state.select(Some(new_index));
-                    false
+                    ExitReason::Interact
                 } else {
                     match c {
-                        'd' | 'D' => {
-                            self.mode = Mode::Delete;
-                            false
-                        }
-                        'q' | 'Q' => true,
-                        _ => false,
+                        'd' | 'D' => ExitReason::Delete,
+                        'q' | 'Q' => ExitReason::Quit,
+                        _ => ExitReason::Interact,
                     }
                 }
             }
-            _ => true,
+            _ => ExitReason::GoTo,
         }
     }
 
-    fn handle_delete_input(&mut self, key: KeyCode) -> bool {
+    fn handle_delete_input(&mut self, key: KeyCode) -> ExitReason {
         match key {
             KeyCode::Char(c) => match c {
                 'y' => {
@@ -109,17 +138,16 @@ impl App {
                         &mut self.dirs,
                         &self.list_path,
                     );
-                    self.mode = Mode::View;
-                    false
+                    ExitReason::DeleteExit
                 }
                 'n' => {
                     self.mode = Mode::View;
-                    false
+                    ExitReason::DeleteExit
                 }
-                'q' => true,
-                _ => false,
+                'q' => ExitReason::Quit,
+                _ => ExitReason::Interact,
             },
-            _ => true,
+            _ => ExitReason::Interact,
         }
     }
 
