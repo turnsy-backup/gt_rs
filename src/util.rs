@@ -35,3 +35,23 @@ pub fn remove_dir(index: usize, dirs: &mut Vec<String>, list_path: &PathBuf) {
     dirs.remove(index);
     overwrite_list_file(list_path, dirs);
 }
+
+pub fn setup(gt_path: &PathBuf) {
+    let gt_path_str = gt_path.to_str().unwrap();
+    let gt_function = format!(
+        r#"function gt() {{
+    temp_file="{gt_path_str}"
+    gt_rs "$@"
+    if [ -f "$temp_file" ] && [ -s "$temp_file" ]; then
+        cd "$(cat "$temp_file")"
+        rm "$temp_file"
+    fi
+}}
+"#
+    );
+
+    println!("Step 1: Add the following to your .zshrc/.bashrc file\n");
+    println!("{}\n", gt_function);
+    println!("Step 2: Source your .zshrc/.bashrc file\n");
+    println!("Ex. `source ~/.zshrc`\n");
+}

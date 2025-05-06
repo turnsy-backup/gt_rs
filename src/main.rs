@@ -8,6 +8,7 @@ use crate::util::add_dir;
 use std::path::PathBuf;
 
 use serde_derive::{Deserialize, Serialize};
+use util::setup;
 
 const DEFAULT_LIST_FILE: &str = "gt_list.txt";
 const DEFAULT_GT_PATH_FILE: &str = "gt_path.txt";
@@ -56,8 +57,11 @@ fn main() {
     let dir_command = std::env::args().nth(2);
 
     match root_command.as_deref() {
-        Some("add") => add_dir(dir_command.as_deref(), &list_path),
+        Some(c) => match c {
+            "add" => add_dir(dir_command.as_deref(), &list_path),
+            "setup" => setup(&gt_path),
+            _ => panic!("Illegal first argument"),
+        },
         None => start(list_path, gt_path),
-        _ => panic!("Illegal first argument"),
     }
 }

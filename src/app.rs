@@ -90,7 +90,7 @@ impl App {
 
     fn render(&mut self, frame: &mut Frame) {
         match self.mode {
-            Mode::View => draw_view(frame, &self.dirs, &mut self.list_state),
+            Mode::View => draw_view(frame, &self.get_dirs_with_prefix(), &mut self.list_state),
             Mode::Delete => draw_delete(frame, &self.dirs[self.list_state.selected().unwrap()]),
         }
     }
@@ -153,5 +153,13 @@ impl App {
 
     fn get_selected_dir(&self) -> String {
         self.dirs[self.list_state.selected().unwrap()].clone()
+    }
+
+    fn get_dirs_with_prefix(&self) -> Vec<String> {
+        self.dirs
+            .iter()
+            .enumerate()
+            .map(|(idx, dir)| format!("[{}] {}", (idx + 1), dir))
+            .collect()
     }
 }
